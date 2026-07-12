@@ -23,7 +23,7 @@
 - **라우트:** `/`(NavPage) · `/home` · `/paper` · `/feed` · `/feed/:id`.
 - **버튼 의미:** 쓰기 화면 `소각`=`POST /posts` + 타는 애니 → 재 화면. `피드`=`/feed` 이동만.
 - **댓글 문구:** 타이머 암시 없는 문구(예: "의견을 남겨보세요.").
-- **주석 컨벤션:** 파일 헤더·모든 export 위에 한 줄 JSDoc `/** */`. 본문 비자명 로직에만 한 줄 `//` WHY. 본문 한국어, 식별자 영어. `@param`/`@returns` 태그 금지.
+- **주석 컨벤션:** 파일 헤더·모든 export 위에 한 줄 JSDoc `/** */`. 단일 default export 파일은 그 한 줄이 파일 헤더 겸 export 문서를 동시에 충족한다(중복 금지). 본문 비자명 로직에만 한 줄 `//` WHY. 본문 한국어, 식별자 영어. `@param`/`@returns` 태그 금지.
 - **팔레트:** 차콜 `#141210` · 엠버 오렌지 `#E8802B` · 양피지 `#E8DCC0` · 건메탈/스틸블루 버튼.
 - **브랜치:** `main`=정답. `practice-start`=`apis/posts.js`·페이지 데이터 이음새만 스텁+TODO+SAMPLE.
 
@@ -193,12 +193,12 @@ const ANIMALS = ["두더지", "너구리", "고양이", "부엉이", "여우"];
 
 /** 저장된 닉네임을 반환하고, 없으면 새로 만들어 세션에 고정한다. */
 export function getNickname() {
-  const saved = localStorage.getItem("nickname");
+  const saved = sessionStorage.getItem("nickname");
   if (saved) return saved;
   const name =
     ADJECTIVES[Math.floor(Math.random() * ADJECTIVES.length)] +
     ANIMALS[Math.floor(Math.random() * ANIMALS.length)];
-  localStorage.setItem("nickname", name);
+  sessionStorage.setItem("nickname", name); // 세션(탭)당 고정
   return name;
 }
 ```
@@ -219,13 +219,15 @@ export function formatTime(seconds) {
 
 ```js
 /** "오늘 N명 소각" 로컬 카운터 — 해당 엔드포인트가 없어 localStorage로 흉내낸다. */
+const key = () => `burnCount:${new Date().toISOString().slice(0, 10)}`; // 날짜별로 "오늘"을 분리
+
 export function getTodayBurnCount() {
-  return Number(localStorage.getItem("burnCount") || 0);
+  return Number(localStorage.getItem(key()) || 0);
 }
 /** 소각 1건 반영 후 누적값 반환. */
 export function incrementBurnCount() {
   const next = getTodayBurnCount() + 1;
-  localStorage.setItem("burnCount", String(next));
+  localStorage.setItem(key(), String(next));
   return next;
 }
 ```
@@ -310,20 +312,12 @@ export default function RoundButton({ label, onClick, variant = "metal" }) {
 
 `Timer.jsx`:
 ```jsx
-/** 남은 초를 로컬로 감소시키며 🔥 MM:SS로 표기한다(API 아님). */
-import { useEffect, useState } from "react";
+/** 남은 초를 🔥 MM:SS로 표기(순수 표시 — 카운트다운은 부모가 준다). */
 import { formatTime } from "../../utils/formatTime";
 import "./Timer.css";
 
 export default function Timer({ seconds }) {
-  const [left, setLeft] = useState(seconds);
-  // seconds prop이 새로 오면(재조회) 로컬 값을 맞춘다.
-  useEffect(() => setLeft(seconds), [seconds]);
-  useEffect(() => {
-    const id = setInterval(() => setLeft((v) => Math.max(0, v - 1)), 1000);
-    return () => clearInterval(id);
-  }, []);
-  return <span className="timer">🔥 {formatTime(left)}</span>;
+  return <span className="timer">🔥 {formatTime(seconds)}</span>;
 }
 ```
 `Timer.css`:
@@ -339,7 +333,7 @@ export default function Timer({ seconds }) {
 - [ ] **Step 5: Storybook 검증**
 
 Run: `npm run storybook`
-Expected: RoundButton 3변형이 원형 금속으로, Timer가 `🔥 04:45`로 뜨고 1초씩 감소.
+Expected: RoundButton 3변형이 원형 금속으로, Timer가 `🔥 04:45`로 표시(카운트다운 구동은 PaperCard에서 확인).
 
 - [ ] **Step 6: Commit**
 
@@ -404,6 +398,7 @@ export default function PaperEditor({ value, onChange, maxLength = 300 }) {
 
 ```jsx
 /** 피드·상세 카드 — 표현 전용. feed는 반응/댓글, detail은 읽기만. */
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import Timer from "../common/Timer";
 import BurnGauge from "./BurnGauge";
@@ -412,11 +407,18 @@ import "./PaperCard.css";
 export default function PaperCard({ post, onLike, onDislike, variant = "feed", onClick }) {
   const navigate = useNavigate();
   const isFeed = variant === "feed";
+  // Timer·BurnGauge가 같은 값을 쓰도록 카드가 로컬 카운트다운을 소유한다.
+  const [left, setLeft] = useState(post.remaining_seconds);
+  useEffect(() => setLeft(post.remaining_seconds), [post.remaining_seconds]);
+  useEffect(() => {
+    const id = setInterval(() => setLeft((v) => Math.max(0, v - 1)), 1000);
+    return () => clearInterval(id);
+  }, []);
   return (
     <article className="paper-card" onClick={isFeed ? onClick : undefined}>
       <header className="paper-card__head">
         <span className="paper-card__nick">{post.nickname}</span>
-        <Timer seconds={post.remaining_seconds} />
+        <Timer seconds={left} />
       </header>
       <p className="paper-card__content">{post.content}</p>
       {isFeed && (
@@ -427,7 +429,7 @@ export default function PaperCard({ post, onLike, onDislike, variant = "feed", o
           <button onClick={(e) => { e.stopPropagation(); navigate(`/feed/${post.id}`); }}>💬 댓글</button>
         </footer>
       )}
-      <BurnGauge seconds={post.remaining_seconds} />
+      <BurnGauge seconds={left} />
     </article>
   );
 }
@@ -636,8 +638,8 @@ export default function Fire() {
     <div className="fire">
       <svg className="fire__svg" viewBox="0 0 300 300">
         <filter id="flame">
-          <feTurbulence ref={turb} type="fractalNoise" baseFrequency="0.02 0.04" numOctaves="2" seed="7" />
-          <feDisplacementMap in="SourceGraphic" scale="30" />
+          <feTurbulence ref={turb} type="fractalNoise" baseFrequency="0.02 0.04" numOctaves="2" seed="7" result="noise" />
+          <feDisplacementMap in="SourceGraphic" in2="noise" scale="30" xChannelSelector="R" yChannelSelector="G" />
         </filter>
         <ellipse cx="150" cy="200" rx="90" ry="120" fill="url(#flameGrad)" filter="url(#flame)" />
         <radialGradient id="flameGrad" cx="50%" cy="80%">
@@ -674,7 +676,7 @@ git commit -m "feat(frontend): Fire(SVG 난류 + GSAP 이글이글)"
 - [ ] **Step 1: DraggablePaper 구현**
 
 ```jsx
-/** 홈 종이 — GSAP Draggable로 끌어 불(중앙 히트존)에 넣으면 콜백. */
+/** 홈 종이 — GSAP Draggable로 끌어 불(fireRef 영역)에 넣으면 콜백. */
 import { useRef } from "react";
 import { useGSAP } from "@gsap/react";
 import gsap from "gsap";
@@ -683,21 +685,20 @@ import "./DraggablePaper.css";
 
 gsap.registerPlugin(Draggable);
 
-export default function DraggablePaper({ onDropIntoFire }) {
+export default function DraggablePaper({ fireRef, onDropIntoFire }) {
   const paper = useRef(null);
   useGSAP(() => {
-    Draggable.create(paper.current, {
+    const [instance] = Draggable.create(paper.current, {
       type: "x,y",
       onDragEnd() {
-        // 화면 중앙 근처에 놓이면 불에 넣은 것으로 본다.
-        const cx = window.innerWidth / 2, cy = window.innerHeight / 2;
-        const r = paper.current.getBoundingClientRect();
-        const near = Math.abs(r.x + r.width / 2 - cx) < 160 && Math.abs(r.y + r.height / 2 - cy) < 160;
-        if (near) onDropIntoFire();
+        // viewport 중심이 아니라 실제 불 영역과 겹치는지로 판정한다.
+        if (Draggable.hitTest(paper.current, fireRef.current, "40%")) onDropIntoFire();
         else gsap.to(paper.current, { x: 0, y: 0, duration: 0.4 }); // 아니면 제자리로
       },
     });
-  });
+    // StrictMode 이중 마운트·라우트 언마운트 시 인스턴스/잔존 tween 정리
+    return () => { instance.kill(); gsap.killTweensOf(paper.current); };
+  }, { scope: paper });
   return <div ref={paper} className="draggable-paper" />;
 }
 ```
@@ -725,7 +726,7 @@ git commit -m "feat(frontend): DraggablePaper(GSAP Draggable)"
 - [ ] **Step 1: BurnAway 구현**
 
 ```jsx
-/** 소각 연출 — trigger 시 children을 SVG 노이즈 마스크로 가장자리부터 태운다. */
+/** 소각 연출 — trigger 시 children을 가장자리부터(마스크 원을 중앙으로 축소) 태운다. */
 import { useRef } from "react";
 import { useGSAP } from "@gsap/react";
 import gsap from "gsap";
@@ -734,27 +735,39 @@ import "./BurnAway.css";
 export default function BurnAway({ trigger, onComplete, children }) {
   const wrap = useRef(null);
   useGSAP(() => {
-    if (!trigger) return;
-    // 마스크 임계값을 올려 투명 영역을 가장자리→중앙으로 넓힌다.
-    const disp = wrap.current.querySelector("feDisplacementMap");
+    if (!trigger) {
+      gsap.set(wrap.current, { "--burn": "80%", opacity: 1 }); // 초기 상태 복구
+      return;
+    }
+    // --burn(마스크 원 반경)을 줄이면 가장자리부터 사라진다. 난류 필터가 탄 가장자리를 만든다.
     gsap.timeline({ onComplete })
-      .fromTo(disp, { attr: { scale: 0 } }, { attr: { scale: 220 }, duration: 1.6, ease: "power2.in" })
-      .to(wrap.current, { opacity: 0, duration: 0.4 }, "-=0.3");
-  }, [trigger]);
+      .fromTo(wrap.current, { "--burn": "80%" }, { "--burn": "0%", duration: 1.6, ease: "power2.in" })
+      .to(wrap.current, { opacity: 0, duration: 0.3 }, "-=0.2");
+  }, { dependencies: [trigger], revertOnUpdate: true, scope: wrap });
   return (
     <div ref={wrap} className="burn-away">
       <svg width="0" height="0">
-        <filter id="burnMask">
-          <feTurbulence type="fractalNoise" baseFrequency="0.012" numOctaves="3" seed="4" />
-          <feDisplacementMap in="SourceGraphic" scale="0" />
+        <filter id="charEdge">
+          <feTurbulence type="fractalNoise" baseFrequency="0.03" numOctaves="2" seed="4" result="n" />
+          <feDisplacementMap in="SourceGraphic" in2="n" scale="14" xChannelSelector="R" yChannelSelector="G" />
         </filter>
       </svg>
-      <div className="burn-away__content" style={{ filter: "url(#burnMask)" }}>{children}</div>
+      <div className="burn-away__content">{children}</div>
     </div>
   );
 }
 ```
-`BurnAway.css`: `__content`에 잉걸불 글로우(테두리 `drop-shadow(0 0 6px var(--color-ember))`). (재 입자는 여력 시 추가.)
+`BurnAway.css`:
+```css
+.burn-away { --burn: 80%; filter: drop-shadow(0 0 8px var(--color-ember)); } /* 잉걸불 글로우는 마스크 밖 부모에 둔다 */
+/* 원형 마스크를 중앙으로 줄여 가장자리부터 사라지게 + 난류 필터로 탄 가장자리 */
+.burn-away__content {
+  filter: url(#charEdge);
+  -webkit-mask: radial-gradient(circle at center, #000 0, #000 var(--burn), transparent calc(var(--burn) + 6%));
+  mask: radial-gradient(circle at center, #000 0, #000 var(--burn), transparent calc(var(--burn) + 6%));
+}
+```
+(재 입자는 여력 시 추가.)
 
 - [ ] **Step 2: 스토리 + 검증**
 
@@ -879,6 +892,7 @@ export default function NavPage() {
 
 ```jsx
 /** 홈 — 불 + 드래그 종이. 종이를 불에 넣으면 쓰기로 이동. */
+import { useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import TopWarningBanner from "../components/layout/TopWarningBanner";
 import Fire from "../components/fire/Fire";
@@ -887,12 +901,13 @@ import "./HomePage.css";
 
 export default function HomePage() {
   const navigate = useNavigate();
+  const fireRef = useRef(null); // 실제 불 영역 — 드롭 판정(hitTest)에 넘긴다
   return (
     <div className="home">
       <TopWarningBanner />
       <h1 className="home__title">INCINER<small>Burn what's in your mind</small></h1>
-      <Fire />
-      <DraggablePaper onDropIntoFire={() => navigate("/paper")} />
+      <div ref={fireRef} className="home__fire"><Fire /></div>
+      <DraggablePaper fireRef={fireRef} onDropIntoFire={() => navigate("/paper")} />
       <p className="home__cta">종이를 드래그해 불태우세요!</p>
     </div>
   );
@@ -916,12 +931,12 @@ export default function FireWipe() {
   useGSAP(() => {
     // 경로가 바뀔 때마다 오버레이를 좌→우로 쓸어 넘긴다.
     gsap.fromTo(el.current, { xPercent: -100 }, { xPercent: 100, duration: 0.6, ease: "power2.inOut" });
-  }, [pathname]);
+  }, { dependencies: [pathname], revertOnUpdate: true });
   return <div ref={el} className="fire-wipe" />;
 }
 ```
 `App.jsx`의 `<BrowserRouter>` 안, `<Routes>` 옆에 `<FireWipe />` 추가.
-`FireWipe.css`: `position: fixed; inset: 0; pointer-events: none; background: linear-gradient(90deg, transparent, var(--color-ember), transparent);`
+`FireWipe.css`: `position: fixed; inset: 0; z-index: 9999; overflow: hidden; pointer-events: none; will-change: transform; background: linear-gradient(90deg, transparent, var(--color-ember), transparent);`
 
 - [ ] **Step 4: 브라우저 검증**
 
@@ -1102,22 +1117,34 @@ git commit -m "feat(frontend): FeedPage·DetailPage(SAMPLE, 데이터 이음새 
 
 `pages/**` + 전체 UI를 Codex로 리뷰. 관점: (1) `SAMPLE`/`// TODO` 자리가 학생에게 명확한 이음새인가, (2) 페이지가 SAMPLE만으로 완전히 둘러보기 가능한가, (3) 남은 오프하는 import/변수 없음. 반영 후 커밋.
 
-### Task 14: practice-start 브랜치 파생
+### Task 14: 실습 README + practice-start 브랜치 파생
 
-**Files:** 없음(브랜치 분기점 지정).
+**Files:**
+- Create: `frontend/README.md` (분기 **전**에 작성 — practice-start에도 포함돼야 하므로)
 
-- [ ] **Step 1: 현재 상태를 practice-start로 브랜치**
+- [ ] **Step 1: 실습 안내 README 작성**
+
+`frontend/README.md` 포함: 실행법(`npm install`, `npm run dev` 포트 5173, `npm run storybook`), CORS 5173 주의·백엔드 워밍업(`/health`), 브랜치 구조(main=정답, practice-start=시작점), **학생이 채울 파일 목록(`apis/posts.js` + 3개 페이지 이음새: PaperPage·FeedPage·DetailPage)**, Swagger(`/docs`) 참고 링크.
+
+- [ ] **Step 2: README 커밋 (분기 전)**
+
+```bash
+git add frontend/README.md
+git commit -m "docs(frontend): 실습 안내 README"
+```
+
+- [ ] **Step 3: 현재 상태를 practice-start로 브랜치**
 
 Run(레포 루트):
 ```bash
 git branch practice-start
 ```
-Expected: 현재 커밋(완성 UI + SAMPLE + posts 스텁 + 페이지 TODO)이 practice-start의 시작점이 된다. 이후 main만 정답으로 진행한다.
+Expected: 현재 커밋(완성 UI + SAMPLE + posts 스텁 + 페이지 TODO + README)이 practice-start의 시작점이 된다. 이후 main만 정답으로 진행한다.
 
-- [ ] **Step 2: 확인**
+- [ ] **Step 4: 확인**
 
 Run: `git log --oneline -1 practice-start`
-Expected: 체크포인트 C 직후 커밋을 가리킨다.
+Expected: README 커밋(체크포인트 C 직후)을 가리킨다.
 
 ---
 
@@ -1307,29 +1334,11 @@ git commit -m "feat(frontend): DetailPage 상세·댓글 연동(정답)"
 
 - [ ] **Step: Codex 리뷰**
 
-Phase 5의 diff(apis/posts.js + 4개 페이지 이음새)를 Codex로 리뷰. 관점: (1) **학생이 라이브로 따라 칠 코드로 명료한가**, (2) 반응/댓글 상태 갱신이 자연스러운가, (3) `getNickname` 출처가 드러나는가, (4) 방어코드 과잉 없이 해피패스인가. 반영 후 커밋.
-
-### Task 19: README(실습 안내)
-
-**Files:**
-- Create: `frontend/README.md`
-
-- [ ] **Step 1: 실습 안내 작성**
-
-포함: 실행법(`npm install`, `npm run dev` 포트 5173, `npm run storybook`), CORS 5173 주의·백엔드 워밍업, 브랜치 구조(main=정답, practice-start=시작점), 학생이 채울 파일 목록(`apis/posts.js` + 4개 페이지 이음새), Swagger(`/docs`) 참고 링크.
-
-- [ ] **Step 2: Commit**
-
-```bash
-git add frontend/README.md
-git commit -m "docs(frontend): 실습 안내 README"
-```
-
----
+Phase 5의 diff(apis/posts.js + 3개 페이지 이음새: PaperPage·FeedPage·DetailPage)를 Codex로 리뷰. 관점: (1) **학생이 라이브로 따라 칠 코드로 명료한가**, (2) 반응/댓글 상태 갱신이 자연스러운가, (3) `getNickname` 출처가 드러나는가, (4) 방어코드 과잉 없이 해피패스인가. 반영 후 커밋.
 
 ## Self-Review (계획 작성자 체크리스트)
 
-- **스펙 커버리지:** 라우트 5개(Task 11~13) · 컴포넌트 인벤토리 전체(Task 3~9) · apis client/posts 분리(Task 10,15) · 페이지 이음새(Task 12,13→16,17,18) · 애니 4종(Task 7,8,9,11) · Storybook(Task 3~9) · 브랜치 파생(Task 14) · 조정 결정(소각=POST Task16 · MM:SS Task2/3 · 댓글 문구 Task5 · 상세 반응 없음 Task4/13) · 운영 노트(README Task19) — 모두 태스크 존재. ✅
+- **스펙 커버리지:** 라우트 5개(Task 11~13) · 컴포넌트 인벤토리 전체(Task 3~9) · apis client/posts 분리(Task 10,15) · 페이지 이음새(Task 12,13→16,17,18) · 애니 4종(Task 7,8,9,11) · Storybook(Task 3~9) · 브랜치 파생(Task 14) · 조정 결정(소각=POST Task16 · MM:SS Task2/3 · 댓글 문구 Task5 · 상세 반응 없음 Task4/13) · 운영 노트(README Task14) — 모두 태스크 존재. ✅
 - **Placeholder:** 코드 내 `// TODO`는 **의도된 실습 스텁**(계획 공백이 아님). 계획 서술엔 미완 표현 없음. ✅
 - **타입 일관성:** `getPosts/getPost/createPost/likePost/dislikePost/getComments/createComment` 시그니처가 apis(Task10 스텁·Task15 구현)와 페이지 소비부(Task16~18)에서 일치. Post/Comment 필드가 sampleData(Task2)·PaperCard(Task4)·PostRead/CommentRead와 일치. ✅
 

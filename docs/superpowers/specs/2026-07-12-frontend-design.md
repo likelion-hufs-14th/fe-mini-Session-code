@@ -189,7 +189,7 @@ GSAP은 2024년 이후 `Draggable` 포함 전 플러그인이 무료다.
 
 - **팔레트(목업 기준):** 차콜 `#141210`, 엠버 오렌지 `#E8802B`, 양피지 `#E8DCC0`, 건메탈/스틸블루 버튼.
 - **utils(완성 제공):**
-  - `nickname.js` — 세션당 랜덤 익명 닉네임 생성, `localStorage` 메모(`getNickname()`).
+  - `nickname.js` — 세션당 랜덤 익명 닉네임 생성, `sessionStorage` 메모(`getNickname()`).
   - `formatTime.js` — 초 → `MM:SS`.
   - `sampleData.js` — 둘러보기용 `SAMPLE_POSTS`·`SAMPLE_POST`·`SAMPLE_COMMENTS`.
 - **"오늘 N명 소각":** 해당 카운트 엔드포인트 없음 → `localStorage` 로컬 카운터(장식).
