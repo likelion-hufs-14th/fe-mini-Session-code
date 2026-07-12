@@ -1,0 +1,31 @@
+/** 상세 화면 레이아웃 — 카드는 중앙, 댓글 목록·입력은 하단에 쌓는다. */
+.detail {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  padding: 0 24px 48px;
+  background: var(--color-bg);
+}
+
+.detail__back {
+  align-self: flex-start;
+  margin-top: 16px;
+  border: none;
+  background: none;
+  color: var(--color-text);
+  font-size: 28px;
+  cursor: pointer;
+}
+
+.detail .paper-card {
+  width: 100%;
+  max-width: 480px;
+}
+
+.detail .comment-list,
+.detail .comment-input {
+  width: 100%;
+  max-width: 480px;
+}

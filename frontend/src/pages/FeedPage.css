@@ -1,0 +1,13 @@
+/** 피드 화면 레이아웃 — 어두운 배경에 종이 카드 3열 그리드. */
+.feed {
+  min-height: 100vh;
+  background: var(--color-bg);
+  padding-bottom: 48px;
+}
+
+.feed__grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 16px;
+  padding: 24px;
+}
