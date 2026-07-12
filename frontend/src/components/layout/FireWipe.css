@@ -1,0 +1,10 @@
+/** 라우트 전환 오버레이 — 화면 전체를 덮고 불빛만 쓸고 지나가게 클릭은 통과시킨다. */
+.fire-wipe {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  overflow: hidden;
+  pointer-events: none;
+  will-change: transform;
+  background: linear-gradient(90deg, transparent, var(--color-ember), transparent);
+}

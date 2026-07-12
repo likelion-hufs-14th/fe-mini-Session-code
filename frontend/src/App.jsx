@@ -5,10 +5,12 @@ import HomePage from "./pages/HomePage";
 import PaperPage from "./pages/PaperPage";
 import FeedPage from "./pages/FeedPage";
 import DetailPage from "./pages/DetailPage";
+import FireWipe from "./components/layout/FireWipe";
 
 export default function App() {
   return (
     <BrowserRouter>
+      <FireWipe />
       <Routes>
         <Route path="/" element={<NavPage />} />
         <Route path="/home" element={<HomePage />} />
