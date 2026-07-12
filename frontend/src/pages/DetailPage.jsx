@@ -1,20 +1,30 @@
 /** 상세 — 카드 + 댓글 리스트/입력(읽기+댓글). */
+import { useState, useEffect } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import TopWarningBanner from "../components/layout/TopWarningBanner";
 import Header from "../components/layout/Header";
 import PaperCard from "../components/paper/PaperCard";
 import CommentList from "../components/comment/CommentList";
 import CommentInput from "../components/comment/CommentInput";
-import { SAMPLE_POSTS, SAMPLE_COMMENTS } from "../utils/sampleData";
+import { getPost, getComments, createComment } from "../apis/posts";
+import { getNickname } from "../utils/nickname";
 import "./DetailPage.css";
 
 export default function DetailPage() {
   const navigate = useNavigate();
   const { id } = useParams();
-  // 연동 전: 샘플에서 URL의 id로 글을 고른다(실습에선 getPost(id)로 교체).
-  const post = SAMPLE_POSTS.find((p) => p.id === Number(id)) || SAMPLE_POSTS[0]; // TODO(실습): getPost(id)
-  const comments = SAMPLE_COMMENTS;  // TODO(실습): getComments(id)
-  const handleSubmit = (text) => { /* TODO: createComment(id, {nickname, content}) 후 목록 갱신 */ };
+  const [post, setPost] = useState(null);
+  const [comments, setComments] = useState([]);
+  // 마운트 시(또는 id 변경 시) 서버에서 글과 댓글을 가져와 채운다
+  useEffect(() => {
+    getPost(id).then(setPost);
+    getComments(id).then(setComments);
+  }, [id]);
+  const handleSubmit = async (text) => {
+    const created = await createComment(id, { nickname: getNickname(), content: text });
+    setComments((list) => [created, ...list]); // 최신순 — 새 댓글을 앞에 추가
+  };
+  if (!post) return null; // 첫 로딩 프레임(방어코드 아님, 렌더 전 null 가드)
   return (
     <div className="detail">
       <TopWarningBanner /><Header />
