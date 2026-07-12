@@ -1,37 +1,44 @@
-/** 글·반응·댓글 API 호출 모음 — 실습에서 학생이 채운다. */
+/** 글·반응·댓글 API 호출 모음. */
 import { api } from "./client";
 
 /** 피드 목록 조회. */
 export async function getPosts() {
-  // TODO: GET /posts 로 만료 안 된 글 배열을 받아 반환하세요.
+  const res = await api.get("/posts");
+  return res.data;
 }
 
 /** 글 상세 조회. */
 export async function getPost(id) {
-  // TODO: GET /posts/{id}
+  const res = await api.get(`/posts/${id}`);
+  return res.data;
 }
 
-/** 글 공유(소각) — 닉네임+내용으로 생성. */
+/** 글 공유(소각). */
 export async function createPost({ nickname, content }) {
-  // TODO: POST /posts
+  const res = await api.post("/posts", { nickname, content });
+  return res.data;
 }
 
 /** 좋아요 +1. */
 export async function likePost(id) {
-  // TODO: POST /posts/{id}/like
+  const res = await api.post(`/posts/${id}/like`);
+  return res.data;
 }
 
 /** 싫어요 +1. */
 export async function dislikePost(id) {
-  // TODO: POST /posts/{id}/dislike
+  const res = await api.post(`/posts/${id}/dislike`);
+  return res.data;
 }
 
 /** 댓글 목록 조회. */
 export async function getComments(id) {
-  // TODO: GET /posts/{id}/comments
+  const res = await api.get(`/posts/${id}/comments`);
+  return res.data;
 }
 
 /** 댓글 작성. */
 export async function createComment(id, { nickname, content }) {
-  // TODO: POST /posts/{id}/comments
+  const res = await api.post(`/posts/${id}/comments`, { nickname, content });
+  return res.data;
 }
