@@ -1,0 +1,20 @@
+.paper-editor { position: relative; }
+.paper-editor__area {
+  width: 100%;
+  min-height: 160px;
+  padding: 16px;
+  border: 1px solid #b8a878;
+  border-radius: 4px;
+  background: var(--color-paper) linear-gradient(135deg, rgba(255,255,255,.25), rgba(0,0,0,.05));
+  color: #2a1e14;
+  font-size: 15px;
+  font-family: inherit;
+  resize: vertical;
+}
+.paper-editor__count {
+  position: absolute;
+  right: 10px;
+  bottom: 10px;
+  font-size: 12px;
+  color: #6b5a3a;
+}
