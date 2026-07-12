@@ -1,9 +1,9 @@
 /** 글·반응·댓글 API 호출 모음. */
-import { api } from "./client";
+import { api } from './client';
 
 /** 피드 목록 조회. */
 export async function getPosts() {
-  const res = await api.get("/posts");
+  const res = await api.get('/posts');
   return res.data;
 }
 
@@ -15,7 +15,7 @@ export async function getPost(id) {
 
 /** 글 공유(소각). */
 export async function createPost({ nickname, content }) {
-  const res = await api.post("/posts", { nickname, content });
+  const res = await api.post('/posts', { nickname, content });
   return res.data;
 }
 

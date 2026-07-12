@@ -1,9 +1,9 @@
 /** BurnGauge 잔여 비율(여유·임박·소진) 확인용 스토리. */
-import BurnGauge from "./BurnGauge";
+import BurnGauge from './BurnGauge';
 
 /** BurnGauge 스토리 메타. */
 export default {
-  title: "paper/BurnGauge",
+  title: 'paper/BurnGauge',
   component: BurnGauge,
 };
 

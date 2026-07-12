@@ -4,8 +4,11 @@
   height: 80px;
   border: 1px solid #b8a878;
   border-radius: 4px;
-  background: var(--color-paper) linear-gradient(135deg, rgba(255,255,255,.2), rgba(0,0,0,.05));
+  background: var(--color-paper)
+    linear-gradient(135deg, rgba(255, 255, 255, 0.2), rgba(0, 0, 0, 0.05));
   cursor: grab;
   touch-action: none; /* 터치 드래그 시 스크롤과 충돌 방지 */
 }
-.draggable-paper:active { cursor: grabbing; }
+.draggable-paper:active {
+  cursor: grabbing;
+}

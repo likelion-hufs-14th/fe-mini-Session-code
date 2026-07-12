@@ -1,27 +1,35 @@
 /** 홈 — 왼쪽 3/4 화로(불구덩이) + 오른쪽 1/4 종이. 종이를 화로로 끌면 쓰기로 이동. */
-import { useRef } from "react";
-import { useNavigate } from "react-router-dom";
-import TopWarningBanner from "../components/layout/TopWarningBanner";
-import Fire from "../components/fire/Fire";
-import DraggablePaper from "../components/paper/DraggablePaper";
-import "./HomePage.css";
+import { useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
+import TopWarningBanner from '../components/layout/TopWarningBanner';
+import Fire from '../components/fire/Fire';
+import DraggablePaper from '../components/paper/DraggablePaper';
+import './HomePage.css';
 
 export default function HomePage() {
   const navigate = useNavigate();
   const fireRef = useRef(null); // 화로(불 영역) — 드롭 판정(hitTest)에 넘긴다
   return (
-    <div className="home">
+    <div className='home'>
       <TopWarningBanner />
-      <div className="home__stage">
-        <section ref={fireRef} className="home__furnace">
-          <h1 className="home__title">INCINER<small>Burn what's in your mind</small></h1>
+      <div className='home__stage'>
+        <section
+          ref={fireRef}
+          className='home__furnace'
+        >
+          <h1 className='home__title'>
+            INCINER<small>Burn what's in your mind</small>
+          </h1>
           <Fire />
         </section>
-        <aside className="home__paper-zone">
-          <DraggablePaper fireRef={fireRef} onDropIntoFire={() => navigate("/paper")} />
+        <aside className='home__paper-zone'>
+          <DraggablePaper
+            fireRef={fireRef}
+            onDropIntoFire={() => navigate('/paper')}
+          />
         </aside>
       </div>
-      <p className="home__cta">종이를 왼쪽 불구덩이로 드래그해 불태우세요!</p>
+      <p className='home__cta'>종이를 왼쪽 불구덩이로 드래그해 불태우세요!</p>
     </div>
   );
 }
