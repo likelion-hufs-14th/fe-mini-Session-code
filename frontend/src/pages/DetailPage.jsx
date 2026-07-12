@@ -1,7 +1,6 @@
 /** 상세 — 카드 + 댓글 리스트/입력(읽기+댓글). */
 import { useNavigate, useParams } from "react-router-dom";
 import TopWarningBanner from "../components/layout/TopWarningBanner";
-import Header from "../components/layout/Header";
 import PaperCard from "../components/paper/PaperCard";
 import CommentList from "../components/comment/CommentList";
 import CommentInput from "../components/comment/CommentInput";
@@ -17,7 +16,7 @@ export default function DetailPage() {
   const handleSubmit = (text) => { /* TODO: createComment(id, {nickname, content}) 후 목록 갱신 */ };
   return (
     <div className="detail">
-      <TopWarningBanner /><Header />
+      <TopWarningBanner />
       <button className="detail__back" onClick={() => navigate(-1)}>‹</button>
       <PaperCard post={post} variant="detail" />
       <CommentList comments={comments} />
