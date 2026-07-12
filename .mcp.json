@@ -1,14 +1,11 @@
 {
-  "mcpServers": {
-    "codex": {
-      "command": "/opt/homebrew/bin/node",
-      "args": [
-        "/opt/homebrew/lib/node_modules/@openai/codex/bin/codex.js",
-        "mcp-server"
-      ],
-      "env": {
-        "PATH": "/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin"
-      }
+    "mcpServers": {
+        "codex": {
+            "command": "/opt/homebrew/bin/node",
+            "args": ["/opt/homebrew/lib/node_modules/@openai/codex/bin/codex.js", "mcp-server"],
+            "env": {
+                "PATH": "/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin"
+            }
+        }
     }
-  }
 }
