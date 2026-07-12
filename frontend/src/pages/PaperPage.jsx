@@ -7,6 +7,8 @@ import PaperEditor from "../components/paper/PaperEditor";
 import RoundButton from "../components/common/RoundButton";
 import BurnAway from "../components/fire/BurnAway";
 import { incrementBurnCount, getTodayBurnCount } from "../utils/burnCount";
+import { createPost } from "../apis/posts";
+import { getNickname } from "../utils/nickname";
 import "./PaperPage.css";
 
 export default function PaperPage() {
@@ -15,8 +17,9 @@ export default function PaperPage() {
   const [content, setContent] = useState("");
   const [burnedCount, setBurnedCount] = useState(0);
 
-  const incinerate = () => {
-    // TODO(실습): 여기서 createPost({ nickname: getNickname(), content }) 로 공유한다.
+  const incinerate = async () => {
+    // 공유(소각) — 글을 피드에 저장한 뒤 타는 애니메이션으로 넘어간다.
+    await createPost({ nickname: getNickname(), content });
     setPhase("burning");
   };
   const onBurnt = () => {
