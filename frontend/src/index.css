@@ -1,0 +1,14 @@
+/** 전역 테마 토큰·리셋 — 인시너 소각장 팔레트. */
+:root {
+  --color-bg: #141210;
+  --color-bg-warm: #2a1e14;
+  --color-ember: #e8802b;
+  --color-paper: #e8dcc0;
+  --color-text: #f3ede0;
+  --color-metal: #3a3a3d;
+  --color-red: #c0392b;
+  --color-blue: #6b8cae;
+  font-family: system-ui, "Apple SD Gothic Neo", sans-serif;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { background: var(--color-bg); color: var(--color-text); }
