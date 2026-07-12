@@ -121,3 +121,43 @@ def dislike_post(post_id: int, db: Session = Depends(get_db)):
     db.commit()
     db.refresh(post)
     return post
+
+
+@router.get(
+    "/{post_id}/comments", response_model=list[CommentRead], summary="댓글 목록 조회",
+    responses={
+        200: {"description": "댓글 목록(최신순)."},
+        404: {"description": "없거나 이미 소각된 글."},
+    },
+)
+def list_comments(post_id: int, db: Session = Depends(get_db)):
+    """글의 댓글을 최신순으로 반환한다."""
+    _get_active_post(db, post_id)
+    return db.scalars(
+        select(Comment).where(Comment.post_id == post_id).order_by(Comment.created_at.desc())
+    ).all()
+
+
+@router.post(
+    "/{post_id}/comments", response_model=CommentRead, status_code=status.HTTP_201_CREATED,
+    summary="댓글 작성",
+    responses={
+        201: {"description": "작성된 댓글. 글의 comment_count가 +1 된다."},
+        404: {"description": "없거나 이미 소각된 글."},
+        422: {"description": "검증 실패 — 내용이 비었거나 300자를 초과함."},
+    },
+)
+def create_comment(post_id: int, payload: CommentCreate, db: Session = Depends(get_db)):
+    """댓글을 작성한다. 타이머에는 영향을 주지 않는다."""
+    post = _get_active_post(db, post_id)
+    comment = Comment(
+        post_id=post_id,
+        nickname=payload.nickname,
+        content=payload.content,
+        created_at=_now(),
+    )
+    post.comment_count += 1
+    db.add(comment)
+    db.commit()
+    db.refresh(comment)
+    return comment
