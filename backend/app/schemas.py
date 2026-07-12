@@ -33,12 +33,12 @@ class PostRead(BaseModel):
     comment_count: int = Field(..., description="댓글 수 (타이머에는 영향 없음)", examples=[5])
     remaining_seconds: int = Field(
         ..., description="소각까지 남은 초. 0이면 다음 조회 시 영구 삭제된다.",
-        examples=[74520],
+        examples=[285],
     )
     created_at: datetime = Field(..., description="작성 시각(UTC)", examples=["2026-07-12T10:00:00Z"])
     expires_at: datetime = Field(
         ..., description="소각 예정 시각(UTC). 반응에 따라 변동.",
-        examples=["2026-07-13T10:00:00Z"],
+        examples=["2026-07-12T10:05:00Z"],
     )
 
 

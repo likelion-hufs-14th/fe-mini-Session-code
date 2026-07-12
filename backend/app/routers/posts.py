@@ -12,9 +12,9 @@ from app.schemas import CommentCreate, CommentRead, PostCreate, PostRead
 
 router = APIRouter(prefix="/posts", tags=["posts"])
 
-BASE_LIFE = timedelta(hours=24)         # 생성 시 기본 노출 시간
-REACTION_STEP = timedelta(minutes=10)   # 좋아요/싫어요 1개당 가감폭
-MAX_LIFE = timedelta(hours=48)          # 생성 시각 기준 노출 상한
+BASE_LIFE = timedelta(minutes=5)        # 생성 시 기본 노출 시간(실습용 단축)
+REACTION_STEP = timedelta(seconds=10)   # 좋아요/싫어요 1개당 가감폭
+MAX_LIFE = timedelta(minutes=10)        # 생성 시각 기준 노출 상한
 
 
 def _now() -> datetime:
@@ -66,15 +66,15 @@ def get_post(post_id: int, db: Session = Depends(get_db)):
     "", response_model=PostRead, status_code=status.HTTP_201_CREATED,
     summary="글 공유 (피드 행)",
     responses={
-        201: {"description": "소각장에 등록된 글. 24시간 타이머가 시작된다."},
+        201: {"description": "소각장에 등록된 글. 5분 타이머가 시작된다."},
         422: {"description": "검증 실패 — 내용이 비었거나 300자를 초과함."},
     },
 )
 def create_post(payload: PostCreate, db: Session = Depends(get_db)):
-    """공유한 글을 소각장(피드)에 등록하고 24시간 타이머를 시작한다.
+    """공유한 글을 소각장(피드)에 등록하고 5분 타이머를 시작한다.
 
     - 즉시 소각한 글은 서버로 오지 않는다(프론트에서 처리).
-    - 생성 직후 remaining_seconds는 86400(24h)이다.
+    - 생성 직후 remaining_seconds는 300(5분)이다.
     """
     now = _now()
     post = Post(
@@ -97,7 +97,7 @@ def create_post(payload: PostCreate, db: Session = Depends(get_db)):
     },
 )
 def like_post(post_id: int, db: Session = Depends(get_db)):
-    """좋아요 +1. 노출 시각을 10분 연장하되 생성 후 48시간을 넘지 못한다."""
+    """좋아요 +1. 노출 시각을 10초 연장하되 생성 후 10분을 넘지 못한다."""
     post = _get_active_post(db, post_id)
     post.like_count += 1
     post.expires_at = min(post.expires_at + REACTION_STEP, post.created_at + MAX_LIFE)
@@ -114,7 +114,7 @@ def like_post(post_id: int, db: Session = Depends(get_db)):
     },
 )
 def dislike_post(post_id: int, db: Session = Depends(get_db)):
-    """싫어요 +1. 노출 시각을 10분 단축한다(하한 없음; now 이하가 되면 다음 조회 시 소각)."""
+    """싫어요 +1. 노출 시각을 10초 단축한다(하한 없음; now 이하가 되면 다음 조회 시 소각)."""
     post = _get_active_post(db, post_id)
     post.dislike_count += 1
     post.expires_at = post.expires_at - REACTION_STEP

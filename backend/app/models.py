@@ -10,7 +10,7 @@ from app.db import Base
 
 
 class Post(Base):
-    """소각 로그 한 건 — 24h 타이머·반응 카운트, 남은 시간은 계산 프로퍼티로 노출."""
+    """소각 로그 한 건 — 노출 타이머·반응 카운트, 남은 시간은 계산 프로퍼티로 노출."""
 
     __tablename__ = "posts"
 

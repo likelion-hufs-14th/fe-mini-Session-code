@@ -21,7 +21,7 @@
 스펙에서 그대로 가져온 프로젝트 전역 규칙. **모든 태스크의 요구사항에 암묵적으로 포함된다.**
 
 - **길이 제한:** `nickname` ≤ 20자, 글/댓글 `content` ≤ 300자, 모두 `min_length=1`(빈 값 금지).
-- **타이머:** 기본 노출 `created_at + 24h`. 좋아요 1개 `+10분`, 싫어요 1개 `-10분`. 상한 `created_at + 48h`. **하한 없음**.
+- **타이머(실습용 단축):** 기본 노출 `created_at + 5분`. 좋아요 1개 `+10초`, 싫어요 1개 `-10초`. 상한 `created_at + 10분`. **하한 없음**.
 - **댓글은 타이머에 영향 없음.**
 - **만료 처리:** 조회(목록·상세·반응·댓글) 시 `expires_at <= now`인 글을 DB에서 실제 삭제(lazy delete). 별도 스케줄러 없음.
 - **닉네임:** 클라이언트가 요청 바디로 보냄. 서버에 세션/인증/닉발급 없음.
@@ -77,7 +77,7 @@ from app.db import Base
 
 
 class Post(Base):
-    """소각 로그 한 건 — 24h 타이머·반응 카운트, 남은 시간은 계산 프로퍼티로 노출."""
+    """소각 로그 한 건 — 노출 타이머·반응 카운트, 남은 시간은 계산 프로퍼티로 노출."""
 
     __tablename__ = "posts"
 
@@ -182,12 +182,12 @@ class PostRead(BaseModel):
     comment_count: int = Field(..., description="댓글 수 (타이머에는 영향 없음)", examples=[5])
     remaining_seconds: int = Field(
         ..., description="소각까지 남은 초. 0이면 다음 조회 시 영구 삭제된다.",
-        examples=[74520],
+        examples=[285],
     )
     created_at: datetime = Field(..., description="작성 시각(UTC)", examples=["2026-07-12T10:00:00Z"])
     expires_at: datetime = Field(
         ..., description="소각 예정 시각(UTC). 반응에 따라 변동.",
-        examples=["2026-07-13T10:00:00Z"],
+        examples=["2026-07-12T10:05:00Z"],
     )
 
 
@@ -251,7 +251,7 @@ git commit -m "feat(backend): replace Item schemas with Post, Comment schemas"
 - Produces:
   - `router` (APIRouter, prefix `/posts`, tag `posts`).
   - 헬퍼 `_now() -> datetime`, `_purge_expired(db) -> None`, `_get_active_post(db, post_id) -> Post`(만료/부재 시 404).
-  - 상수 `BASE_LIFE`(24h), `REACTION_STEP`(10분), `MAX_LIFE`(48h).
+  - 상수 `BASE_LIFE`(5분), `REACTION_STEP`(10초), `MAX_LIFE`(10분).
   - 엔드포인트 `GET /posts`, `GET /posts/{id}`, `POST /posts`.
   - (Task 4·5가 이 파일의 `router`와 헬퍼에 엔드포인트를 덧붙인다.)
 
@@ -272,9 +272,9 @@ from app.schemas import CommentCreate, CommentRead, PostCreate, PostRead
 
 router = APIRouter(prefix="/posts", tags=["posts"])
 
-BASE_LIFE = timedelta(hours=24)         # 생성 시 기본 노출 시간
-REACTION_STEP = timedelta(minutes=10)   # 좋아요/싫어요 1개당 가감폭
-MAX_LIFE = timedelta(hours=48)          # 생성 시각 기준 노출 상한
+BASE_LIFE = timedelta(minutes=5)        # 생성 시 기본 노출 시간(실습용 단축)
+REACTION_STEP = timedelta(seconds=10)   # 좋아요/싫어요 1개당 가감폭
+MAX_LIFE = timedelta(minutes=10)        # 생성 시각 기준 노출 상한
 
 
 def _now() -> datetime:
@@ -326,15 +326,15 @@ def get_post(post_id: int, db: Session = Depends(get_db)):
     "", response_model=PostRead, status_code=status.HTTP_201_CREATED,
     summary="글 공유 (피드 행)",
     responses={
-        201: {"description": "소각장에 등록된 글. 24시간 타이머가 시작된다."},
+        201: {"description": "소각장에 등록된 글. 5분 타이머가 시작된다."},
         422: {"description": "검증 실패 — 내용이 비었거나 300자를 초과함."},
     },
 )
 def create_post(payload: PostCreate, db: Session = Depends(get_db)):
-    """공유한 글을 소각장(피드)에 등록하고 24시간 타이머를 시작한다.
+    """공유한 글을 소각장(피드)에 등록하고 5분 타이머를 시작한다.
 
     - 즉시 소각한 글은 서버로 오지 않는다(프론트에서 처리).
-    - 생성 직후 remaining_seconds는 86400(24h)이다.
+    - 생성 직후 remaining_seconds는 300(5분)이다.
     """
     now = _now()
     post = Post(
@@ -385,7 +385,7 @@ git commit -m "feat(backend): add posts router with create/list/detail + lazy de
     },
 )
 def like_post(post_id: int, db: Session = Depends(get_db)):
-    """좋아요 +1. 노출 시각을 10분 연장하되 생성 후 48시간을 넘지 못한다."""
+    """좋아요 +1. 노출 시각을 10초 연장하되 생성 후 10분을 넘지 못한다."""
     post = _get_active_post(db, post_id)
     post.like_count += 1
     post.expires_at = min(post.expires_at + REACTION_STEP, post.created_at + MAX_LIFE)
@@ -402,7 +402,7 @@ def like_post(post_id: int, db: Session = Depends(get_db)):
     },
 )
 def dislike_post(post_id: int, db: Session = Depends(get_db)):
-    """싫어요 +1. 노출 시각을 10분 단축한다(하한 없음; now 이하가 되면 다음 조회 시 소각)."""
+    """싫어요 +1. 노출 시각을 10초 단축한다(하한 없음; now 이하가 되면 다음 조회 시 소각)."""
     post = _get_active_post(db, post_id)
     post.dislike_count += 1
     post.expires_at = post.expires_at - REACTION_STEP
@@ -588,23 +588,23 @@ git commit -m "feat(backend): wire posts router, drop example resource, update R
 ```bash
 curl -s -X POST $BASE/posts -H 'Content-Type: application/json' \
   -d '{"nickname":"익명의두더지","content":"아 집가고 싶다.."}'
-# → 201, remaining_seconds ≈ 86400, like/dislike/comment_count = 0, id 확인 (이하 $ID)
+# → 201, remaining_seconds ≈ 300, like/dislike/comment_count = 0, id 확인 (이하 $ID)
 curl -s $BASE/posts            # → 방금 글이 배열 맨 앞(최신순)
 curl -s $BASE/posts/$ID        # → 상세
 curl -s -o /dev/null -w '%{http_code}\n' $BASE/posts/999999   # → 404
 ```
 
-- [ ] **Step 3: 반응 타이머 + 48h 상한 (기준 5,6)**
+- [ ] **Step 3: 반응 타이머 + 10분 상한 (기준 5,6)**
 
 ```bash
 curl -s -X POST $BASE/posts/$ID/like     # → like_count=1, remaining_seconds 증가
 curl -s -X POST $BASE/posts/$ID/dislike  # → dislike_count=1, remaining_seconds 감소
 
-# 상한(48h=172800초) 확인: 새 글에 좋아요를 대량으로 눌러 캡되는지
+# 상한(10분=600초) 확인: 새 글에 좋아요를 대량으로 눌러 캡되는지
 CAP=$(curl -s -X POST $BASE/posts -H 'Content-Type: application/json' \
   -d '{"nickname":"캡테스트","content":"cap"}' | python -c "import sys,json;print(json.load(sys.stdin)['id'])")
 for i in $(seq 1 200); do curl -s -o /dev/null -X POST $BASE/posts/$CAP/like; done
-curl -s $BASE/posts/$CAP   # → remaining_seconds가 ≈172800에서 멈춤(206400 아님 = 캡 동작)
+curl -s $BASE/posts/$CAP   # → remaining_seconds가 ≈600에서 멈춤(2300 아님 = 캡 동작)
 ```
 
 - [ ] **Step 4: 댓글 (기준 7,8)**
@@ -636,10 +636,10 @@ curl -s -o /dev/null -w '%{http_code}\n' -X POST $BASE/posts/999999/comments \
 ```
   - `$BASE/openapi.json`에 요청 바디·응답 스키마 포함, Swagger에 모든 필드 설명·예시 노출 확인.
 
-- [ ] **Step 6: lazy delete + 물리 삭제/cascade (기준 12)** — 24h를 기다리지 않고 싫어요로 만료를 강제
+- [ ] **Step 6: lazy delete + 물리 삭제/cascade (기준 12)** — 5분을 기다리지 않고 싫어요로 만료를 강제
 
 ```bash
-# 새 글($ID2)에 댓글 1개를 단 뒤, 24h/10분=144회 초과 싫어요로 expires_at을 now 아래로 끌어내린다
+# 새 글($ID2)에 댓글 1개를 단 뒤, 5분/10초=30회 초과 싫어요로 expires_at을 now 아래로 끌어내린다
 ID2=$(curl -s -X POST $BASE/posts -H 'Content-Type: application/json' \
   -d '{"nickname":"곧소각","content":"burn"}' | python -c "import sys,json;print(json.load(sys.stdin)['id'])")
 curl -s -o /dev/null -X POST $BASE/posts/$ID2/comments \

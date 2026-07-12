@@ -7,7 +7,7 @@
 
 ## 배경 & 목표
 
-**인시너**는 익명·휘발성 감정 배설 서비스다. 로그인 없이 즉시 이용하며, 작성한 글은 24시간 뒤 "소각"되어 사라진다. 좋아요는 노출 시간을 늘리고 싫어요는 줄인다.
+**인시너**는 익명·휘발성 감정 배설 서비스다. 로그인 없이 즉시 이용하며, 작성한 글은 5분 뒤 "소각"되어 사라진다(실습용 단축 단위). 좋아요는 노출 시간을 늘리고 싫어요는 줄인다.
 
 이 문서의 목표는 프론트 세션 실습에 쓸 **실제 API 도메인**(리소스·필드·엔드포인트·에러·타이머 규칙)을 확정하는 것이다. 인프라 스펙의 임시 `items` CRUD를 이 도메인으로 교체한다.
 
@@ -18,7 +18,7 @@
 이 서비스의 상당 부분은 프론트 연출이다. 백엔드는 아래만 책임진다.
 
 **백엔드(이 스펙):**
-- '공유(피드 행)'한 글 저장 및 24시간 타이머 관리.
+- '공유(피드 행)'한 글 저장 및 5분 타이머 관리.
 - **남은 시간(`remaining_seconds`) 서버 계산** — 프론트의 흐려짐/바스러짐 이펙트가 이 값을 쓴다.
 - 좋아요/싫어요 카운트 및 그에 따른 타이머 연장/단축.
 - 댓글 저장 및 개수 집계.
@@ -36,10 +36,10 @@
 | 항목 | 결정 |
 |---|---|
 | 리소스 | **글(`posts`)** / **댓글(`comments`)**. 반응은 글의 카운터. |
-| 기본 노출 시간 | 생성 후 **24시간** |
-| 좋아요 효과 | `expires_at += 10분` (누를 때마다) |
-| 싫어요 효과 | `expires_at -= 10분` (누를 때마다) |
-| 노출 시간 상한 | `expires_at ≤ created_at + 48시간` (휘발성 유지) |
+| 기본 노출 시간 | 생성 후 **5분** (실습용 단축) |
+| 좋아요 효과 | `expires_at += 10초` (누를 때마다) |
+| 싫어요 효과 | `expires_at -= 10초` (누를 때마다) |
+| 노출 시간 상한 | `expires_at ≤ created_at + 10분` (휘발성 유지) |
 | 노출 시간 하한 | 없음. 싫어요로 `expires_at ≤ now`가 되면 다음 조회 시 소각 |
 | 댓글의 타이머 영향 | **없음**(순수 대화 기능) |
 | 만료 글 처리 | **조회 시 실제 삭제(lazy delete)** — 별도 스케줄러 없음 |
@@ -58,7 +58,7 @@
 | `nickname` | str(≤20) | 클라이언트가 보냄 |
 | `content` | str(≤300) | 최대 300자 |
 | `created_at` | datetime(tz) | 앱이 생성 시 tz-aware UTC로 세팅(`expires_at`와 동일 클럭 보장) |
-| `expires_at` | datetime(tz) | 앱: `created_at + 24h`, 반응으로 변동 |
+| `expires_at` | datetime(tz) | 앱: `created_at + 5분`, 반응으로 변동 |
 | `like_count` | int, default 0 | |
 | `dislike_count` | int, default 0 | |
 | `comment_count` | int, default 0 | 댓글 생성 시 +1(조인 없이 읽도록 비정규화) |
@@ -75,7 +75,7 @@
 
 ### 계산 필드(저장 안 함)
 
-- `remaining_seconds` = `max(0, expires_at - now)` (초). 매 응답마다 서버가 즉석 계산한다. 카드의 🔥 `00H 00M` 표기는 프론트가 이 값으로 포맷한다.
+- `remaining_seconds` = `max(0, expires_at - now)` (초). 매 응답마다 서버가 즉석 계산한다. 카드의 🔥 `00M 00S`(분:초) 표기는 프론트가 이 값으로 포맷한다.
 
 ## API 표면
 
@@ -83,7 +83,7 @@
 
 | 메서드 | 경로 | 목적 | 성공 응답 | 명세서 교육 포인트 |
 |---|---|---|---|---|
-| POST | `/posts` | 글 공유(피드 행) → 24h 타이머 시작 | `201` + `PostRead` | 요청 바디 스키마 |
+| POST | `/posts` | 글 공유(피드 행) → 5분 타이머 시작 | `201` + `PostRead` | 요청 바디 스키마 |
 | GET | `/posts` | 피드 목록(만료 제외, 최신순) | `200` + `list[PostRead]` | 응답 배열 스키마 |
 | GET | `/posts/{id}` | 상세 | `200` + `PostRead` | 경로 파라미터 / 404 |
 | POST | `/posts/{id}/like` | 좋아요 +1, 타이머 연장 | `200` + `PostRead` | 부수효과 있는 POST |
@@ -97,9 +97,9 @@
 
 ## 타이머 규칙 (핵심 로직)
 
-- **생성:** `expires_at = created_at + 24h`.
-- **좋아요 1개:** `expires_at += 10분`, 단 `min(expires_at, created_at + 48h)`로 상한 적용.
-- **싫어요 1개:** `expires_at -= 10분`. 하한 없음.
+- **생성:** `expires_at = created_at + 5분`.
+- **좋아요 1개:** `expires_at += 10초`, 단 `min(expires_at, created_at + 10분)`로 상한 적용.
+- **싫어요 1개:** `expires_at -= 10초`. 하한 없음.
 - **소각:** 조회(목록·상세·반응·댓글) 시점에 `expires_at ≤ now`인 글을 **DB에서 실제 삭제**하고, 해당 글에 대한 상세/반응/댓글 요청은 `404`를 반환한다.
 - **관련 댓글:** 글 삭제 시 그 글의 댓글도 함께 정리한다(FK cascade 또는 명시적 삭제).
 - `remaining_seconds`는 저장하지 않고 응답 시마다 계산한다.
@@ -147,12 +147,12 @@ class PostRead(BaseModel):
     comment_count: int = Field(..., description="댓글 수 (타이머에는 영향 없음)", examples=[5])
     remaining_seconds: int = Field(
         ..., description="소각까지 남은 초. 0이면 다음 조회 시 영구 삭제된다.",
-        examples=[74520],
+        examples=[285],
     )
     created_at: datetime = Field(..., description="작성 시각(UTC)", examples=["2026-07-12T10:00:00Z"])
     expires_at: datetime = Field(
         ..., description="소각 예정 시각(UTC). 반응에 따라 변동.",
-        examples=["2026-07-13T10:00:00Z"],
+        examples=["2026-07-12T10:05:00Z"],
     )
 ```
 
@@ -165,15 +165,15 @@ class PostRead(BaseModel):
     status_code=status.HTTP_201_CREATED,
     summary="글 공유 (피드 행)",
     responses={
-        201: {"description": "소각장에 등록된 글. 24시간 타이머가 시작된다."},
+        201: {"description": "소각장에 등록된 글. 5분 타이머가 시작된다."},
         422: {"description": "검증 실패 — 내용이 비었거나 300자를 초과함."},
     },
 )
 def create_post(payload: PostCreate, db: Session = Depends(get_db)):
-    """공유 버튼을 누른 글을 소각장(피드)에 등록하고 24시간 타이머를 시작한다.
+    """공유 버튼을 누른 글을 소각장(피드)에 등록하고 5분 타이머를 시작한다.
 
     - 즉시 소각한 글은 서버로 오지 않는다(프론트에서 처리).
-    - 생성 직후 `remaining_seconds`는 86400(24h)이다.
+    - 생성 직후 `remaining_seconds`는 300(5분)이다.
     """
     ...
 ```
@@ -223,10 +223,10 @@ backend/app/
 스펙 1과 동일하게 **배포된 API(단일 Render PostgreSQL)**를 대상으로만 확인한다.
 
 1. 배포된 `/docs`가 정상 로딩되고, `posts`/`comments` 엔드포인트가 모두 노출된다.
-2. `POST /posts` → `201`, 응답 `remaining_seconds ≈ 86400`. 데이터가 PostgreSQL에 기록된다.
+2. `POST /posts` → `201`, 응답 `remaining_seconds ≈ 300`. 데이터가 PostgreSQL에 기록된다.
 3. `GET /posts` → 방금 만든 글이 배열에 포함되고 최신순으로 온다.
 4. `GET /posts/{id}` → 상세가 오고, 없는 id는 `404`.
-5. `POST /posts/{id}/like` → `like_count` 증가 + `remaining_seconds` 증가(상한 48h 확인).
+5. `POST /posts/{id}/like` → `like_count` 증가 + `remaining_seconds` 증가(상한 10분 확인).
 6. `POST /posts/{id}/dislike` → `dislike_count` 증가 + `remaining_seconds` 감소.
 7. `POST /posts/{id}/comments` → `201`, 이후 글의 `comment_count`가 +1. 타이머는 불변.
 8. `GET /posts/{id}/comments` → 작성한 댓글이 온다.
