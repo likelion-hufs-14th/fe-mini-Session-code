@@ -8,12 +8,12 @@ export default function BurnAway({ trigger, onComplete, children }) {
   const wrap = useRef(null);
   useGSAP(() => {
     if (!trigger) {
-      gsap.set(wrap.current, { "--burn": "80%", opacity: 1 }); // 초기 상태 복구
+      gsap.set(wrap.current, { "--burn": "150%", opacity: 1 }); // 초기: 원이 종이 전체를 덮어 안 잘리게
       return;
     }
-    // --burn(마스크 원 반경)을 줄이면 가장자리부터 사라진다. 난류 필터가 탄 가장자리를 만든다.
+    // --burn(마스크 원 반경)을 줄이면 가장자리부터 사라진다.
     gsap.timeline({ onComplete })
-      .fromTo(wrap.current, { "--burn": "80%" }, { "--burn": "0%", duration: 1.6, ease: "power2.in" })
+      .fromTo(wrap.current, { "--burn": "150%" }, { "--burn": "0%", duration: 1.6, ease: "power2.in" })
       .to(wrap.current, { opacity: 0, duration: 0.3 }, "-=0.2");
   }, { dependencies: [trigger], revertOnUpdate: true, scope: wrap });
   return (
@@ -24,7 +24,10 @@ export default function BurnAway({ trigger, onComplete, children }) {
           <feDisplacementMap in="SourceGraphic" in2="n" scale="14" xChannelSelector="R" yChannelSelector="G" />
         </filter>
       </svg>
-      <div className="burn-away__content">{children}</div>
+      {/* 마스크된 결과를 난류로 일그러뜨려 매끈한 원이 아니라 탄 가장자리로 만든다 */}
+      <div className="burn-away__char">
+        <div className="burn-away__content">{children}</div>
+      </div>
     </div>
   );
 }

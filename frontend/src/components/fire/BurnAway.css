@@ -1,7 +1,7 @@
-.burn-away { --burn: 80%; filter: drop-shadow(0 0 8px var(--color-ember)); } /* 잉걸불 글로우는 마스크 밖 부모에 둔다 */
-/* 원형 마스크를 중앙으로 줄여 가장자리부터 사라지게 + 난류 필터로 탄 가장자리 */
+.burn-away { --burn: 150%; filter: drop-shadow(0 0 8px var(--color-ember)); }
+/* 마스크된 콘텐츠를 난류로 일그러뜨려 탄 가장자리 질감을 만든다 */
+.burn-away__char { filter: url(#charEdge); }
 .burn-away__content {
-  filter: url(#charEdge);
   -webkit-mask: radial-gradient(circle at center, #000 0, #000 var(--burn), transparent calc(var(--burn) + 6%));
   mask: radial-gradient(circle at center, #000 0, #000 var(--burn), transparent calc(var(--burn) + 6%));
 }
