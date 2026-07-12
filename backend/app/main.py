@@ -5,7 +5,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app import models  # noqa: F401  (Base.metadata에 테이블 등록)
 from app.db import Base, engine
-from app.routers import example
+from app.routers import posts
 
 
 @asynccontextmanager
@@ -34,4 +34,4 @@ def health():
     return {"status": "ok"}
 
 
-app.include_router(example.router)
+app.include_router(posts.router)
