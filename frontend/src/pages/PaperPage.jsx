@@ -2,7 +2,6 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import TopWarningBanner from "../components/layout/TopWarningBanner";
-import Header from "../components/layout/Header";
 import PaperEditor from "../components/paper/PaperEditor";
 import RoundButton from "../components/common/RoundButton";
 import BurnAway from "../components/fire/BurnAway";
@@ -31,7 +30,7 @@ export default function PaperPage() {
   if (phase === "ashed") {
     return (
       <div className="paper-page paper-page--ashed">
-        <TopWarningBanner /><Header />
+        <TopWarningBanner />
         <h1 className="ashed__title">당신의 이야기는<br />재가 되어 사라졌습니다</h1>
         <p className="ashed__count">오늘 {burnedCount || getTodayBurnCount()}명이 소각했습니다</p>
         <div className="ashed__buttons">
@@ -44,7 +43,7 @@ export default function PaperPage() {
 
   return (
     <div className="paper-page">
-      <TopWarningBanner /><Header />
+      <TopWarningBanner />
       <h2 className="paper-page__prompt">태워 버리고 싶은 당신의 속마음을 말해보세요.</h2>
       <BurnAway trigger={phase === "burning"} onComplete={onBurnt}>
         <PaperEditor value={content} onChange={setContent} />

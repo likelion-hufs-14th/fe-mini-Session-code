@@ -2,7 +2,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import TopWarningBanner from "../components/layout/TopWarningBanner";
-import Header from "../components/layout/Header";
 import PaperCard from "../components/paper/PaperCard";
 import CommentList from "../components/comment/CommentList";
 import CommentInput from "../components/comment/CommentInput";
@@ -27,7 +26,7 @@ export default function DetailPage() {
   if (!post) return null; // 첫 로딩 프레임(방어코드 아님, 렌더 전 null 가드)
   return (
     <div className="detail">
-      <TopWarningBanner /><Header />
+      <TopWarningBanner />
       <button className="detail__back" onClick={() => navigate(-1)}>‹</button>
       <PaperCard post={post} variant="detail" />
       <CommentList comments={comments} />
