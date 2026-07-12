@@ -87,3 +87,37 @@ def create_post(payload: PostCreate, db: Session = Depends(get_db)):
     db.commit()
     db.refresh(post)
     return post
+
+
+@router.post(
+    "/{post_id}/like", response_model=PostRead, summary="좋아요",
+    responses={
+        200: {"description": "갱신된 글(좋아요 +1, 노출 시간 연장)."},
+        404: {"description": "없거나 이미 소각된 글."},
+    },
+)
+def like_post(post_id: int, db: Session = Depends(get_db)):
+    """좋아요 +1. 노출 시각을 10분 연장하되 생성 후 48시간을 넘지 못한다."""
+    post = _get_active_post(db, post_id)
+    post.like_count += 1
+    post.expires_at = min(post.expires_at + REACTION_STEP, post.created_at + MAX_LIFE)
+    db.commit()
+    db.refresh(post)
+    return post
+
+
+@router.post(
+    "/{post_id}/dislike", response_model=PostRead, summary="싫어요",
+    responses={
+        200: {"description": "갱신된 글(싫어요 +1, 노출 시간 단축)."},
+        404: {"description": "없거나 이미 소각된 글."},
+    },
+)
+def dislike_post(post_id: int, db: Session = Depends(get_db)):
+    """싫어요 +1. 노출 시각을 10분 단축한다(하한 없음; now 이하가 되면 다음 조회 시 소각)."""
+    post = _get_active_post(db, post_id)
+    post.dislike_count += 1
+    post.expires_at = post.expires_at - REACTION_STEP
+    db.commit()
+    db.refresh(post)
+    return post
