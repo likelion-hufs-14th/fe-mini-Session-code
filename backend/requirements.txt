@@ -1,4 +1,6 @@
 fastapi==0.139.0
+# fastapi는 starlette>=0.46.0로 상한이 없어 미핀 시 배포마다 최신으로 흐른다 → 재현성 위해 검증된 버전 고정
+starlette==0.47.3
 uvicorn[standard]==0.51.0
 sqlalchemy==2.0.51
 psycopg[binary]==3.3.4
