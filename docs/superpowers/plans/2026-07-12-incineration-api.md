@@ -67,6 +67,7 @@ backend/README.md     # 수정: 리소스 설명 갱신
 ```python
 """SQLAlchemy DB 모델 — posts(소각 로그)·comments(댓글). PostgreSQL 테이블에 대응."""
 
+import math
 from datetime import datetime, timezone
 
 from sqlalchemy import DateTime, ForeignKey, Integer, String
@@ -95,9 +96,9 @@ class Post(Base):
 
     @property
     def remaining_seconds(self) -> int:
-        """소각까지 남은 초 — 응답 시마다 계산하며 음수는 0으로 클램프."""
+        """소각까지 남은 초 — 응답 시마다 계산하며 만료 시 0(양수 잔여는 올림해 0⟺소각 정합)."""
         delta = (self.expires_at - datetime.now(timezone.utc)).total_seconds()
-        return max(0, int(delta))
+        return max(0, math.ceil(delta))
 
 
 class Comment(Base):
@@ -183,8 +184,11 @@ class PostRead(BaseModel):
         ..., description="소각까지 남은 초. 0이면 다음 조회 시 영구 삭제된다.",
         examples=[74520],
     )
-    created_at: datetime = Field(..., description="작성 시각(UTC)")
-    expires_at: datetime = Field(..., description="소각 예정 시각(UTC). 반응에 따라 변동.")
+    created_at: datetime = Field(..., description="작성 시각(UTC)", examples=["2026-07-12T10:00:00Z"])
+    expires_at: datetime = Field(
+        ..., description="소각 예정 시각(UTC). 반응에 따라 변동.",
+        examples=["2026-07-13T10:00:00Z"],
+    )
 
 
 class CommentCreate(BaseModel):
@@ -211,7 +215,7 @@ class CommentRead(BaseModel):
     post_id: int = Field(..., description="소속 글 ID", examples=[42])
     nickname: str = Field(..., description="작성자 익명 닉네임", examples=["지나가던행인"])
     content: str = Field(..., description="댓글 내용", examples=["저도 진짜 집에 가고 싶어요ㅠㅠ"])
-    created_at: datetime = Field(..., description="작성 시각(UTC)")
+    created_at: datetime = Field(..., description="작성 시각(UTC)", examples=["2026-07-12T10:05:00Z"])
 ```
 
 - [ ] **Step 2: 문법 점검**
@@ -287,7 +291,10 @@ def _get_active_post(db: Session, post_id: int) -> Post:
     return post
 
 
-@router.get("", response_model=list[PostRead], summary="피드 목록 조회")
+@router.get(
+    "", response_model=list[PostRead], summary="피드 목록 조회",
+    responses={200: {"description": "만료되지 않은 글 목록(최신순)."}},
+)
 def list_posts(db: Session = Depends(get_db)):
     """만료되지 않은 글을 최신순으로 모두 반환한다(페이지네이션 없음)."""
     _purge_expired(db)
@@ -296,7 +303,10 @@ def list_posts(db: Session = Depends(get_db)):
 
 @router.get(
     "/{post_id}", response_model=PostRead, summary="글 상세 조회",
-    responses={404: {"description": "없거나 이미 소각된 글."}},
+    responses={
+        200: {"description": "글 상세."},
+        404: {"description": "없거나 이미 소각된 글."},
+    },
 )
 def get_post(post_id: int, db: Session = Depends(get_db)):
     """글 하나를 반환한다. 만료된 글은 조회 시 소각되고 404를 반환한다."""
@@ -360,7 +370,10 @@ git commit -m "feat(backend): add posts router with create/list/detail + lazy de
 ```python
 @router.post(
     "/{post_id}/like", response_model=PostRead, summary="좋아요",
-    responses={404: {"description": "없거나 이미 소각된 글."}},
+    responses={
+        200: {"description": "갱신된 글(좋아요 +1, 노출 시간 연장)."},
+        404: {"description": "없거나 이미 소각된 글."},
+    },
 )
 def like_post(post_id: int, db: Session = Depends(get_db)):
     """좋아요 +1. 노출 시각을 10분 연장하되 생성 후 48시간을 넘지 못한다."""
@@ -374,7 +387,10 @@ def like_post(post_id: int, db: Session = Depends(get_db)):
 
 @router.post(
     "/{post_id}/dislike", response_model=PostRead, summary="싫어요",
-    responses={404: {"description": "없거나 이미 소각된 글."}},
+    responses={
+        200: {"description": "갱신된 글(싫어요 +1, 노출 시간 단축)."},
+        404: {"description": "없거나 이미 소각된 글."},
+    },
 )
 def dislike_post(post_id: int, db: Session = Depends(get_db)):
     """싫어요 +1. 노출 시각을 10분 단축한다(하한 없음; now 이하가 되면 다음 조회 시 소각)."""
@@ -414,7 +430,10 @@ git commit -m "feat(backend): add like/dislike endpoints with timer extend/short
 ```python
 @router.get(
     "/{post_id}/comments", response_model=list[CommentRead], summary="댓글 목록 조회",
-    responses={404: {"description": "없거나 이미 소각된 글."}},
+    responses={
+        200: {"description": "댓글 목록(최신순)."},
+        404: {"description": "없거나 이미 소각된 글."},
+    },
 )
 def list_comments(post_id: int, db: Session = Depends(get_db)):
     """글의 댓글을 최신순으로 반환한다."""
@@ -548,11 +567,17 @@ curl -s $BASE/posts/$ID        # → 상세
 curl -s -o /dev/null -w '%{http_code}\n' $BASE/posts/999999   # → 404
 ```
 
-- [ ] **Step 3: 반응 타이머 (기준 5,6)**
+- [ ] **Step 3: 반응 타이머 + 48h 상한 (기준 5,6)**
 
 ```bash
-curl -s -X POST $BASE/posts/$ID/like     # → like_count=1, remaining_seconds 증가(상한 48h=172800)
+curl -s -X POST $BASE/posts/$ID/like     # → like_count=1, remaining_seconds 증가
 curl -s -X POST $BASE/posts/$ID/dislike  # → dislike_count=1, remaining_seconds 감소
+
+# 상한(48h=172800초) 확인: 새 글에 좋아요를 대량으로 눌러 캡되는지
+CAP=$(curl -s -X POST $BASE/posts -H 'Content-Type: application/json' \
+  -d '{"nickname":"캡테스트","content":"cap"}' | python -c "import sys,json;print(json.load(sys.stdin)['id'])")
+for i in $(seq 1 200); do curl -s -o /dev/null -X POST $BASE/posts/$CAP/like; done
+curl -s $BASE/posts/$CAP   # → remaining_seconds가 ≈172800에서 멈춤(206400 아님 = 캡 동작)
 ```
 
 - [ ] **Step 4: 댓글 (기준 7,8)**
@@ -565,30 +590,50 @@ curl -s $BASE/posts/$ID          # → comment_count 1 (타이머 불변)
 curl -s $BASE/posts/$ID/comments # → 방금 댓글이 최신순으로
 ```
 
-- [ ] **Step 5: 검증 실패(422) & Swagger 스키마 (기준 9,10)**
+- [ ] **Step 5: 검증 실패(422) · 반응/댓글 404 · Swagger 스키마 (기준 9,10)**
 
 ```bash
+# 422 — 빈 내용 / 300자 초과 / 닉네임 누락
 curl -s -o /dev/null -w '%{http_code}\n' -X POST $BASE/posts \
-  -H 'Content-Type: application/json' -d '{"nickname":"익명","content":""}'   # → 422
+  -H 'Content-Type: application/json' -d '{"nickname":"익명","content":""}'                 # → 422
+curl -s -o /dev/null -w '%{http_code}\n' -X POST $BASE/posts \
+  -H 'Content-Type: application/json' \
+  -d "{\"nickname\":\"익명\",\"content\":\"$(python -c 'print("가"*301)')\"}"                 # → 422
+curl -s -o /dev/null -w '%{http_code}\n' -X POST $BASE/posts \
+  -H 'Content-Type: application/json' -d '{"content":"닉네임없음"}'                            # → 422
+
+# 404 — 없는 글에 반응/댓글
+curl -s -o /dev/null -w '%{http_code}\n' -X POST $BASE/posts/999999/like                     # → 404
+curl -s -o /dev/null -w '%{http_code}\n' -X POST $BASE/posts/999999/comments \
+  -H 'Content-Type: application/json' -d '{"nickname":"x","content":"y"}'                     # → 404
 ```
   - `$BASE/openapi.json`에 요청 바디·응답 스키마 포함, Swagger에 모든 필드 설명·예시 노출 확인.
 
-- [ ] **Step 6: lazy delete (기준 12)** — 24h를 기다리지 않고 싫어요로 만료를 강제
+- [ ] **Step 6: lazy delete + 물리 삭제/cascade (기준 12)** — 24h를 기다리지 않고 싫어요로 만료를 강제
 
 ```bash
-# 새 글 하나 만들고 그 $ID2로: 24h/10분 = 144회 초과 싫어요 → expires_at을 now 아래로
+# 새 글($ID2)에 댓글 1개를 단 뒤, 24h/10분=144회 초과 싫어요로 expires_at을 now 아래로 끌어내린다
+ID2=$(curl -s -X POST $BASE/posts -H 'Content-Type: application/json' \
+  -d '{"nickname":"곧소각","content":"burn"}' | python -c "import sys,json;print(json.load(sys.stdin)['id'])")
+curl -s -o /dev/null -X POST $BASE/posts/$ID2/comments \
+  -H 'Content-Type: application/json' -d '{"nickname":"목격자","content":"곧 사라질 글"}'
 for i in $(seq 1 150); do curl -s -o /dev/null -X POST $BASE/posts/$ID2/dislike; done
+
 curl -s -o /dev/null -w '%{http_code}\n' $BASE/posts/$ID2   # → 404 (조회 시 소각됨)
-curl -s $BASE/posts | grep -c "\"id\": $ID2" || echo "목록에서 사라짐 확인"
+# 목록에서 사라졌는지 — 공백 유무에 안전한 JSON 파싱으로 확인(grep 금지)
+curl -s $BASE/posts | python -c "import sys,json; ids=[p['id'] for p in json.load(sys.stdin)]; print('목록에서 사라짐' if $ID2 not in ids else '아직 있음!')"
+# (선택) 물리 삭제 + 댓글 cascade를 DB에서 직접 확인 — Render PSQL 콘솔에서:
+#   SELECT count(*) FROM posts    WHERE id=$ID2;       -- 0
+#   SELECT count(*) FROM comments WHERE post_id=$ID2;  -- 0 (ON DELETE CASCADE)
 ```
 
 - [ ] **Step 7: CORS & 영속성 (기준 11,9(재시작))**
   - 로컬 Vite 프론트(`http://localhost:5173`)에서 `fetch($BASE/posts)`가 CORS 차단 없이 성공(기준 11).
   - Render 대시보드에서 Web Service **Manual Restart** 후 `curl $BASE/posts/$ID` → Step 2에서 만든 글이 유지됨(기준 9의 영속화 최종 확인).
 
-- [ ] **Step 8: (선택) 기존 `items` 테이블 정리**
+- [ ] **Step 8: 기존 `items` 테이블 정리 (스펙의 교체 절차)**
 
-새 `posts`/`comments`는 `create_all`로 자동 생성된다. 인프라 검증용으로 남은 `items` 테이블은 무해하지만 정리하려면 Render의 PSQL 콘솔에서:
+새 `posts`/`comments`는 `create_all`로 자동 생성된다. 인프라 검증용 임시 `items` 테이블을 스펙의 교체 절차대로 제거한다. Render PSQL 콘솔에서:
 
 ```sql
 DROP TABLE IF EXISTS items;

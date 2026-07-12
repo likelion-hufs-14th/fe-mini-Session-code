@@ -57,8 +57,8 @@
 | `id` | int PK | |
 | `nickname` | str(≤20) | 클라이언트가 보냄 |
 | `content` | str(≤300) | 최대 300자 |
-| `created_at` | datetime(tz) | 서버 생성(`func.now()`) |
-| `expires_at` | datetime(tz) | 서버: `created_at + 24h`, 반응으로 변동 |
+| `created_at` | datetime(tz) | 앱이 생성 시 tz-aware UTC로 세팅(`expires_at`와 동일 클럭 보장) |
+| `expires_at` | datetime(tz) | 앱: `created_at + 24h`, 반응으로 변동 |
 | `like_count` | int, default 0 | |
 | `dislike_count` | int, default 0 | |
 | `comment_count` | int, default 0 | 댓글 생성 시 +1(조인 없이 읽도록 비정규화) |
@@ -71,7 +71,7 @@
 | `post_id` | int, FK→`posts.id` | |
 | `nickname` | str(≤20) | 클라이언트가 보냄 |
 | `content` | str(≤300) | |
-| `created_at` | datetime(tz) | 서버 생성 |
+| `created_at` | datetime(tz) | 앱이 생성 시 tz-aware UTC로 세팅 |
 
 ### 계산 필드(저장 안 함)
 
@@ -149,8 +149,11 @@ class PostRead(BaseModel):
         ..., description="소각까지 남은 초. 0이면 다음 조회 시 영구 삭제된다.",
         examples=[74520],
     )
-    created_at: datetime = Field(..., description="작성 시각(UTC)")
-    expires_at: datetime = Field(..., description="소각 예정 시각(UTC). 반응에 따라 변동.")
+    created_at: datetime = Field(..., description="작성 시각(UTC)", examples=["2026-07-12T10:00:00Z"])
+    expires_at: datetime = Field(
+        ..., description="소각 예정 시각(UTC). 반응에 따라 변동.",
+        examples=["2026-07-13T10:00:00Z"],
+    )
 ```
 
 **라우터 (`routers/posts.py`):**
