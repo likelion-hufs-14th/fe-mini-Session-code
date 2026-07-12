@@ -1,0 +1,19 @@
+.comment-item {
+  display: flex;
+  gap: 8px;
+  padding: 8px 0;
+  list-style: none;
+  border-bottom: 1px solid #e0e0e0;
+}
+.comment-item__nick {
+  font-weight: 700;
+  font-size: 13px;
+  color: #2a1e14;
+  flex-shrink: 0;
+}
+.comment-item__text {
+  font-size: 13px;
+  color: #2a1e14;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
