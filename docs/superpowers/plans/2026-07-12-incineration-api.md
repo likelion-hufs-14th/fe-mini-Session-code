@@ -232,6 +232,15 @@ git commit -m "feat(backend): replace Item schemas with Post, Comment schemas"
 
 ---
 
+## 🔍 Codex Review A — 데이터 계층 (Task 1~2 완료 후, Task 3 진입 전)
+
+이후 모든 태스크가 이 위에 쌓이므로 데이터 계층을 먼저 검증한다.
+
+- [ ] `mcp__codex__codex`(sandbox `read-only`, cwd = repo, approval `never`)로 `backend/app/models.py`·`backend/app/schemas.py` 리뷰 요청. 초점: tz-aware 컬럼, FK `ON DELETE CASCADE` 실제 방출, `remaining_seconds` 프로퍼티 ↔ `from_attributes` 직렬화, 필드 제약(길이·필수)이 스펙과 일치하는지.
+- [ ] 결과를 receiving-code-review 기준으로 검증(외부 리뷰 = 회의적으로). 블로커·타당한 should-fix는 반영, nit는 판단. 반영 시 `fix(backend): ...` 별도 커밋.
+
+---
+
 ## Task 3: posts 라우터 골격 + 글 생성/조회
 
 **Files:**
@@ -482,6 +491,15 @@ git commit -m "feat(backend): add comment list/create endpoints (no timer effect
 
 ---
 
+## 🔍 Codex Review B — 라우터 전체 로직 (Task 3~5 완료 후, Task 6 진입 전)
+
+가장 위험한 상관관계(타이머 수학·lazy delete·세션/커밋)를 한 파일이 완성된 시점에 통으로 검증한다.
+
+- [ ] `mcp__codex__codex`(read-only)로 `backend/app/routers/posts.py` 전체 리뷰 요청. 초점: `_get_active_post`/`_purge_expired`의 만료·404 경계, 좋아요 `min()` 캡·싫어요 하한 없음, `comment_count` 증가, 커밋/`refresh` 누락, N+1·세션 오류.
+- [ ] receiving-code-review로 검증 후 반영, `fix(backend): ...` 별도 커밋.
+
+---
+
 ## Task 6: 앱 배선 + 예시 리소스 제거 + README 갱신
 
 **Files:**
@@ -542,6 +560,15 @@ Expected: 출력 없음(exit 0). `example.py`가 삭제됐고 어디서도 참�
 git add backend/app/main.py backend/README.md
 git commit -m "feat(backend): wire posts router, drop example resource, update README"
 ```
+
+---
+
+## 🔍 Codex Review C — 조립 최종 diff (Task 6 완료 후, 배포 직전)
+
+배포 전 마지막 게이트. 앱 전체가 조립된 diff를 통합 관점에서 본다.
+
+- [ ] `mcp__codex__codex`(read-only)로 `main.py` 배선·`example.py` 제거·라우터 등록·`from app import models` 유지 등 통합 관점 리뷰 + 브랜치 diff(`git diff c0e36de..HEAD -- backend/`) 전체 점검 요청.
+- [ ] receiving-code-review로 검증·반영 후 커밋. 이후 배포하고 Task 7 배포 검증 진행.
 
 ---
 
