@@ -3,7 +3,7 @@ import "./RoundButton.css";
 
 export default function RoundButton({ label, onClick, variant = "metal" }) {
   return (
-    <button className={`round-button round-button--${variant}`} onClick={onClick}>
+    <button type="button" className={`round-button round-button--${variant}`} onClick={onClick}>
       {label}
     </button>
   );
