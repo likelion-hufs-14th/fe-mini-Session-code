@@ -18,6 +18,7 @@ export default function PaperPage() {
   const [burnedCount, setBurnedCount] = useState(0);
 
   const incinerate = async () => {
+    if (!content) return; // 빈 글은 보내지 않는다(백엔드가 1자 이상 요구 — CommentInput과 동일한 최소 가드)
     // 공유(소각) — 글을 피드에 저장한 뒤 타는 애니메이션으로 넘어간다.
     await createPost({ nickname: getNickname(), content });
     setPhase("burning");
