@@ -5,12 +5,33 @@
   padding: 16px;
   border: 1px solid #b8a878;
   border-radius: 8px;
-  background: var(--color-paper) linear-gradient(135deg, rgba(255,255,255,.2), rgba(0,0,0,.05));
+  background: var(--color-paper)
+    linear-gradient(135deg, rgba(255, 255, 255, 0.2), rgba(0, 0, 0, 0.05));
   color: #2a1e14;
 }
-.paper-card:has(.paper-card__foot) { cursor: pointer; }
-.paper-card__head { display: flex; align-items: center; justify-content: space-between; }
-.paper-card__nick { font-weight: 700; }
-.paper-card__content { white-space: pre-wrap; word-break: break-word; }
-.paper-card__foot { display: flex; gap: 8px; }
-.paper-card__foot button { border: none; background: none; cursor: pointer; font-size: 13px; color: #2a1e14; }
+.paper-card:has(.paper-card__foot) {
+  cursor: pointer;
+}
+.paper-card__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.paper-card__nick {
+  font-weight: 700;
+}
+.paper-card__content {
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+.paper-card__foot {
+  display: flex;
+  gap: 8px;
+}
+.paper-card__foot button {
+  border: none;
+  background: none;
+  cursor: pointer;
+  font-size: 13px;
+  color: #2a1e14;
+}

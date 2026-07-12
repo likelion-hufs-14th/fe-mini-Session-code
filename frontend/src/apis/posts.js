@@ -1,5 +1,5 @@
 /** 글·반응·댓글 API 호출 모음 — 실습에서 학생이 채운다. */
-import { api } from "./client";
+import { api } from './client';
 
 /** 피드 목록 조회. */
 export async function getPosts() {

@@ -1,2 +1,11 @@
-.burn-gauge { height: 8px; border-radius: 4px; background: #3a1e10; overflow: hidden; }
-.burn-gauge__fill { height: 100%; background: linear-gradient(90deg, #3a1e10, var(--color-ember)); transition: width 1s linear; }
+.burn-gauge {
+  height: 8px;
+  border-radius: 4px;
+  background: #3a1e10;
+  overflow: hidden;
+}
+.burn-gauge__fill {
+  height: 100%;
+  background: linear-gradient(90deg, #3a1e10, var(--color-ember));
+  transition: width 1s linear;
+}

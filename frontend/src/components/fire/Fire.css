@@ -1,2 +1,22 @@
-.fire { width: 300px; height: 300px; margin: 0 auto; }
-.fire__svg { width: 100%; height: 100%; mix-blend-mode: screen; }
+/** 화로 바닥을 꽉 채우는 큰 불구덩이. 위로 번지는 열 글로우, 드래그 방해 안 하게 pointer 무시. */
+.fire {
+  width: 100%;
+  max-width: 640px;
+  height: 80%;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  filter: drop-shadow(0 -8px 44px rgba(255, 120, 20, 0.55));
+  pointer-events: none;
+}
+.fire__svg {
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+}
+.fire__flame {
+  will-change: transform;
+}
+.fire__spark {
+  will-change: transform, opacity;
+}
