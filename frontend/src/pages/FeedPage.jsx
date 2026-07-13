@@ -14,12 +14,14 @@ export default function FeedPage() {
     getPosts().then(setPosts);
   }, []);
   const handleLike = async (id) => {
-    const updated = await likePost(id);
-    setPosts((list) => list.map((p) => (p.id === id ? updated : p))); // 갱신된 글로 교체
+    const updated = await likePost(id); // 갱신된 글 한 건 (PostRead): { id, nickname, content, like_count, dislike_count, comment_count, ... }
+    const nextPosts = posts.map((p) => (p.id === id ? updated : p)); // 누른 글만 updated로 교체한 새 배열
+    setPosts(nextPosts); // 다 만든 새 배열을 그대로 넣어 목록 교체 → 화면 다시 그림
   };
   const handleDislike = async (id) => {
     const updated = await dislikePost(id);
-    setPosts((list) => list.map((p) => (p.id === id ? updated : p)));
+    const nextPosts = posts.map((p) => (p.id === id ? updated : p));
+    setPosts(nextPosts);
   };
   return (
     <div className='feed'>
